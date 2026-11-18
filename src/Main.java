@@ -6,30 +6,24 @@ import java.util.*;
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-
         Graph graph = new Graph();
 
         System.out.print("Graph file to read from: ");
         String fileName = "data/" + scanner.nextLine().trim();
 
-        try (BufferedReader br =
-                     new BufferedReader(new FileReader(fileName))) {
-            while(br.ready()) {
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
+            while (br.ready()) {
                 String line = br.readLine().trim();
                 String[] connection = line.split(" ");
 
-                // Add nodes if they don't exist
                 if (!graph.contains(connection[0])) {
-                    Node n = new Node(connection[0]);
-                    graph.addNode(n);
+                    graph.addNode(new Node(connection[0]));
                 }
                 if (!graph.contains(connection[1])) {
-                    Node n = new Node(connection[1]);
-                    graph.addNode(n);
+                    graph.addNode(new Node(connection[1]));
                 }
 
-                graph.addConnection(connection[0], connection[1],
-                        Double.parseDouble(connection[2]));
+                graph.addConnection(connection[0], connection[1], Double.parseDouble(connection[2]));
             }
 
             System.out.print("List of nodes:");
@@ -41,26 +35,35 @@ public class Main {
             System.out.print("Node to start at: ");
             Node start = graph.getNode(scanner.nextLine().trim());
 
-            for (Map.Entry<Node, Double> entry : runDjikstra(graph, start).entrySet()) {
-                System.out.println(start.getName()
-                        + " -> " + entry.getKey().getName()
-                        + "  " + "dist: " + entry.getValue());
+            HashMap<Node, Double> distances = new HashMap<>();
+            HashMap<Node, Node> previous = new HashMap<>();
+
+            runDijkstra(graph, start, distances, previous);
+
+            // Print distances and paths
+            for (Node n : graph.nodes) {
+                double dist = distances.get(n);
+                if (dist == Double.MAX_VALUE) {
+                    System.out.println(n.getName() + " is unreachable.");
+                } else {
+                    printPath(start, n, previous, dist);
+                }
             }
+
         } catch (IOException e) {
             System.out.println("An error occurred.");
         }
     }
 
-    public static HashMap<Node, Double> runDjikstra(Graph graph, Node start) {
-        HashMap<Node, Double> distance = new HashMap<>();
+    public static void runDijkstra(Graph graph, Node start, HashMap<Node, Double> distances, HashMap<Node, Node> previous) {
         PriorityQueue<NodeDistance> queue = new PriorityQueue<>();
         HashSet<Node> visited = new HashSet<>();
 
         for (Node n : graph.nodes) {
-            distance.put(n, Double.MAX_VALUE); // node, infinity
+            distances.put(n, Double.MAX_VALUE);
         }
 
-        distance.put(start, 0.0);
+        distances.put(start, 0.0);
         queue.add(new NodeDistance(start, 0.0));
 
         while (!queue.isEmpty()) {
@@ -70,33 +73,45 @@ public class Main {
             if (visited.contains(curr)) {
                 continue;
             }
-
             visited.add(curr);
-
-            System.out.println(curr.getName());
 
             HashMap<Node, Double> neighborDist = curr.getNeighbors();
             for (Map.Entry<Node, Double> entry : neighborDist.entrySet()) {
                 Node neighbor = entry.getKey();
-                double d = entry.getValue();
+                double weight = entry.getValue();
 
                 if (visited.contains(neighbor)) {
                     continue;
                 }
 
-                double newDist = distance.get(curr) + d;
-                if (newDist < distance.get(neighbor)) {
-                    distance.put(neighbor, newDist);
+                double newDist = distances.get(curr) + weight;
+                if (newDist < distances.get(neighbor)) {
+                    distances.put(neighbor, newDist);
+                    previous.put(neighbor, curr); // Save the path history
                     queue.add(new NodeDistance(neighbor, newDist));
                 }
             }
         }
+    }
 
-        return distance;
+    // Helper to print the path like: B -> A -> C  dist: 5.0
+    public static void printPath(Node start, Node target, HashMap<Node, Node> previous, double dist) {
+        List<String> path = new ArrayList<>();
+        Node curr = target;
+
+        while (curr != null) {
+            path.add(0, curr.getName());
+            if (curr.equals(start)) {
+                break;
+            }
+            curr = previous.get(curr);
+        }
+
+        System.out.println(String.join(" -> ", path) + "  dist: " + dist);
     }
 }
 
-// Small wrapper class for distance from start node
+// Required wrapper class because Java's PriorityQueue doesn't support decreaseKey()
 class NodeDistance implements Comparable<NodeDistance> {
     Node node;
     double dist;
