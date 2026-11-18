@@ -32,48 +32,67 @@ public class Main {
                         Double.parseDouble(connection[2]));
             }
 
-            System.out.print("Starting Node: ");
+            System.out.print("List of nodes:");
+            for (Node n : graph.nodes) {
+                System.out.print(" " + n.getName());
+            }
+            System.out.println();
+
+            System.out.print("Node to start at: ");
             Node start = graph.getNode(scanner.nextLine().trim());
 
-            runDjikstra(graph, start);
+            for (Map.Entry<Node, Double> entry : runDjikstra(graph, start).entrySet()) {
+                System.out.println(start.getName()
+                        + " -> " + entry.getKey().getName()
+                        + "  " + "dist: " + entry.getValue());
+            }
         } catch (IOException e) {
             System.out.println("An error occurred.");
         }
     }
 
-    public static void runDjikstra(Graph graph, Node start) {
+    public static HashMap<Node, Double> runDjikstra(Graph graph, Node start) {
         HashMap<Node, Double> distance = new HashMap<>();
-        PriorityQueue<Node> queue = new PriorityQueue<>();
+        PriorityQueue<NodeDistance> queue = new PriorityQueue<>();
         HashSet<Node> visited = new HashSet<>();
 
-        distance.put(start, 0.0);
         for (Node n : graph.nodes) {
             distance.put(n, Double.MAX_VALUE); // node, infinity
         }
 
-        queue.add(start);
+        distance.put(start, 0.0);
+        queue.add(new NodeDistance(start, 0.0));
+
         while (!queue.isEmpty()) {
-            Node curr = queue.poll();
-            HashMap<Node, Double> neighborDist = curr.getNeighbors();
+            NodeDistance currND = queue.poll();
+            Node curr = currND.node;
 
-            for (Node n : neighborDist.keySet()) {
-                double dist =
-                        neighborDist.get(n) + distance.get(curr);
-                if (dist < distance.get(n)) {
-                    distance.put(n, dist);
-                }
-
-                if (!visited.contains(curr)) {
-                    queue.add(curr);
-                }
+            if (visited.contains(curr)) {
+                continue;
             }
+
+            visited.add(curr);
 
             System.out.println(curr.getName());
 
+            HashMap<Node, Double> neighborDist = curr.getNeighbors();
+            for (Map.Entry<Node, Double> entry : neighborDist.entrySet()) {
+                Node neighbor = entry.getKey();
+                double d = entry.getValue();
 
+                if (visited.contains(neighbor)) {
+                    continue;
+                }
 
-            visited.add(curr);
+                double newDist = distance.get(curr) + d;
+                if (newDist < distance.get(neighbor)) {
+                    distance.put(neighbor, newDist);
+                    queue.add(new NodeDistance(neighbor, newDist));
+                }
+            }
         }
+
+        return distance;
     }
 }
 
